@@ -8,9 +8,9 @@ from typing import Dict, List
 from models import ProgressBreakdown  # type: ignore
 from tasks import TaskDefinition, OrderSpec  # type: ignore
 
-EPSILON = 0.01
+EPSILON = 0.001
 SCORE_FLOOR = EPSILON
-SCORE_CEILING = 1.0 - EPSILON
+SCORE_CEILING = 0.999
 
 @dataclass
 class OrderWorkspace:
@@ -72,5 +72,5 @@ def grade_task(
     mean_score = sum(scores) / len(scores)
     finalization_bonus = 0.05 if finalized else SCORE_FLOOR
     final_score = _clamp_task_score((mean_score * 0.95) + finalization_bonus)
-    clamped_final = max(EPSILON, min(1.0 - EPSILON, final_score))
+    clamped_final = max(EPSILON, min(0.999, final_score))
     return round(clamped_final, 4), breakdown

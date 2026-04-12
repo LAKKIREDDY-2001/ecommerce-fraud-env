@@ -18,8 +18,8 @@ def test_easy_task_perfect_score():
         )
     }
     score, breakdown = grade_task(task, workspace, finalized=True)
-    assert score == pytest.approx(0.99)
-    assert breakdown["ORD-101"].total_score == pytest.approx(0.99)
+    assert score == pytest.approx(0.999)
+    assert breakdown["ORD-101"].total_score == pytest.approx(0.999)
 
 def test_medium_task_perfect_score():
     task = TASKS["medium_mixed_queue"]
@@ -28,7 +28,7 @@ def test_medium_task_perfect_score():
         "ORD-202": OrderWorkspace(status="reject", reason="stolen", user_banned=True)
     }
     score, bk = grade_task(task, workspace, finalized=True)
-    assert score == pytest.approx(0.99)
+    assert score == pytest.approx(0.999)
 
 def test_hard_task_perfect_score():
     task = TASKS["hard_bot_ring"]
@@ -38,7 +38,7 @@ def test_hard_task_perfect_score():
         "ORD-303": OrderWorkspace(status="reject", reason="bot ring", user_banned=True)
     }
     score, bk = grade_task(task, workspace, finalized=True)
-    assert score == pytest.approx(0.99)
+    assert score == pytest.approx(0.999)
 
 def test_all_scores_stay_strictly_inside_open_interval():
     for task in TASKS.values():
@@ -53,6 +53,6 @@ def test_non_finalized_task_never_returns_zero():
     task = TASKS["medium_mixed_queue"]
     score, breakdown = grade_task(task, {}, finalized=False)
 
-    assert score == pytest.approx(0.2057)
-    assert breakdown["ORD-201"].total_score == pytest.approx(0.402)
-    assert breakdown["ORD-202"].total_score == pytest.approx(0.01)
+    assert score == pytest.approx(0.1916)
+    assert breakdown["ORD-201"].total_score == pytest.approx(0.4002)
+    assert breakdown["ORD-202"].total_score == pytest.approx(0.001)

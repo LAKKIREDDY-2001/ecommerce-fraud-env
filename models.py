@@ -16,9 +16,9 @@ OperationType = Literal[
 ]
 
 class ProgressBreakdown(BaseModel):
-    order_action_score: float = Field(default=0.01)
-    user_action_score: float = Field(default=0.01)
-    total_score: float = Field(default=0.01)
+    order_action_score: float = Field(default=0.001)
+    user_action_score: float = Field(default=0.001)
+    total_score: float = Field(default=0.001)
     notes: List[str] = Field(default_factory=list)
 
 class OrderRecord(BaseModel):
@@ -67,7 +67,7 @@ class FraudObservation(Observation):
     current_order: Optional[OrderDetail] = None
     current_user: Optional[UserDetail] = None
     knowledge_base: List[str] = Field(default_factory=list)
-    progress_score: float = Field(default=0.01)
+    progress_score: float = Field(default=0.001)
     final_score: Optional[float] = None
     last_action: str = Field(default="")
     allowed_actions: List[str] = Field(default_factory=list)
@@ -79,6 +79,6 @@ class FraudState(State):
     queue: List[OrderRecord] = Field(default_factory=list)
     finalized: bool = False
     max_steps: int = 0
-    progress_score: float = 0.01
+    progress_score: float = 0.001
     final_score: Optional[float] = None
     grading_breakdown: Dict[str, ProgressBreakdown] = Field(default_factory=dict)
