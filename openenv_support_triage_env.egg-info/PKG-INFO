@@ -1,0 +1,187 @@
+Metadata-Version: 2.4
+Name: openenv-support-triage-env
+Version: 0.1.0
+Summary: Support ticket triage environment for OpenEnv
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: openenv-core[core]>=0.2.1
+Requires-Dist: openai>=1.30.0
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: requests>=2.31.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+
+---
+title: Support Triage Environment Server
+emoji: 📬
+colorFrom: blue
+colorTo: gray
+sdk: docker
+pinned: false
+app_port: 7860
+base_path: /web
+tags:
+  - openenv
+---
+
+# Support Triage Environment
+
+`support_triage_env` is a real-world OpenEnv environment for customer support operations. An agent must inspect a queue of SaaS support tickets, assign the right team and priority, send a compliant customer reply, resolve the work item, and finalize the queue. The environment is deterministic and grades performance from `0.0` to `1.0` with partial credit throughout the trajectory.
+
+## Why This Is Useful
+
+Real support teams do this work every day. The environment models common operations tasks that matter in production systems:
+
+- billing escalations
+- account security lockouts
+- product bug triage
+- compliance and trust incidents
+
+That makes it useful for evaluating agent planning, policy compliance, and multi-step operational correctness without falling back to a toy game.
+
+## Action Space
+
+The environment accepts a typed `SupportTriageAction`:
+
+- `view_ticket(ticket_id)`
+- `update_ticket(ticket_id, team, priority)`
+- `submit_reply(ticket_id, response_text)`
+- `resolve_ticket(ticket_id)`
+- `finalize()`
+- `noop()`
+
+Allowed teams:
+
+- `billing`
+- `technical`
+- `account_security`
+- `trust_safety`
+
+Allowed priorities:
+
+- `low`
+- `medium`
+- `high`
+- `urgent`
+
+## Observation Space
+
+Each `SupportTriageObservation` includes:
+
+- task card with objective, difficulty, and max steps
+- inbox summary for each ticket
+- detailed current ticket after `view_ticket`
+- knowledge base snippets
+- current progress score
+- last action summary
+- grading breakdown in `metadata`
+
+## Tasks
+
+### 1. Easy: Duplicate Renewal Charge
+
+One billing ticket. The agent must route it to billing, mark it high priority, mention `duplicate charge`, ask for the `invoice id`, promise `24 hours`, resolve the ticket, and finalize.
+
+### 2. Medium: Security + Product Bug Queue
+
+Two tickets with different urgency profiles. The agent must treat a login lockout as `account_security` + `urgent`, and a CSV export failure as `technical` + `high`, then send policy-compliant replies for both.
+
+### 3. Hard: Compliance Incident Queue
+
+Three tickets covering trust-and-safety incident response, GDPR deletion, and VAT invoice correction. The agent needs to balance compliance language, risk routing, and multiple SLAs within a longer episode.
+
+## Reward Design
+
+Rewards are shaped from progress deltas:
+
+- positive reward when routing, replies, and resolution improve the current graded state
+- small per-step action cost to discourage loops
+- stronger penalty for invalid actions
+- finalization reward tied to the deterministic grader
+
+Ticket scoring weights:
+
+- routing: `40%`
+- reply content: `40%`
+- resolution: `20%`
+
+Task score is the mean ticket score, with a small finalize bonus when the agent explicitly closes the queue.
+
+## Graders
+
+Graders are deterministic and programmatic in [graders.py](/Users/lakkireddyvenkatamadhavareddy/Meta Assessment/graders.py). Each ticket checks:
+
+- correct team
+- correct priority
+- required keyword coverage in the reply
+- forbidden phrase violations when applicable
+- whether the ticket was resolved
+
+## Project Layout
+
+- [models.py](/Users/lakkireddyvenkatamadhavareddy/Meta Assessment/models.py): typed OpenEnv action, observation, and state models
+- [tasks.py](/Users/lakkireddyvenkatamadhavareddy/Meta Assessment/tasks.py): easy, medium, and hard task definitions
+- [graders.py](/Users/lakkireddyvenkatamadhavareddy/Meta Assessment/graders.py): deterministic scoring logic
+- [server/support_triage_environment.py](/Users/lakkireddyvenkatamadhavareddy/Meta Assessment/server/support_triage_environment.py): environment reset/step/state implementation
+- [inference.py](/Users/lakkireddyvenkatamadhavareddy/Meta Assessment/inference.py): root-level baseline runner using the OpenAI client
+
+## Setup
+
+```bash
+uv sync
+openenv validate
+uv run server
+```
+
+Then open:
+
+- `http://localhost:8000/web`
+- `http://localhost:8000/docs`
+
+## Docker
+
+```bash
+docker build -t support-triage-env .
+docker run -p 8000:8000 support-triage-env
+```
+
+## Hugging Face Space Deployment
+
+Push from the repo root:
+
+```bash
+openenv push --repo-id <your-username>/support-triage-env
+```
+
+The Space should be tagged with `openenv` and will expose the API plus `/web`.
+
+## Baseline Inference
+
+Required environment variables:
+
+- `API_BASE_URL`
+- `MODEL_NAME`
+- `HF_TOKEN`
+
+Optional:
+
+- `ENV_URL` defaults to `http://localhost:8000`
+
+Run the baseline:
+
+```bash
+python inference.py
+```
+
+The script uses the OpenAI client when credentials are present. If credentials are missing, it falls back to a deterministic local policy so you can smoke-test the environment before wiring in a hosted model.
+
+## Baseline Scores
+
+Deterministic fallback baseline target:
+
+- `easy_refund_request`: `1.0`
+- `medium_security_and_bug_queue`: `1.0`
+- `hard_compliance_incident_queue`: `1.0`
+- aggregate: `1.0`
+
+Hosted LLM scores will depend on `MODEL_NAME`, but the environment itself is deterministic so repeated runs with the same model settings should be stable.

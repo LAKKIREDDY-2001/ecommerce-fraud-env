@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "task_id": "easy_proxy_fraud",
+      "score": 0.98
+    },
+    {
+      "task_id": "medium_mixed_queue",
+      "score": 0.98
+    },
+    {
+      "task_id": "hard_bot_ring",
+      "score": 0.98
+    }
+  ],
+  "aggregate_score": 0.98
+}

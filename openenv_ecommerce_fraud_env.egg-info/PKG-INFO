@@ -1,0 +1,105 @@
+Metadata-Version: 2.4
+Name: openenv-ecommerce-fraud-env
+Version: 1.0.0
+Summary: E-Commerce Fraud Investigation environment for OpenEnv
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: openenv-core[core]>=0.2.1
+Requires-Dist: openai>=1.30.0
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: requests>=2.31.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+
+---
+title: E-Commerce Fraud Environment Server
+emoji: 🛡️
+colorFrom: red
+colorTo: gray
+sdk: docker
+pinned: false
+app_port: 7860
+base_path: /web
+tags:
+  - openenv
+---
+
+# E-Commerce Fraud Investigation Environment
+
+`ecommerce_fraud_env` is a novel, real-world OpenEnv environment for Trust & Safety investigation. An AI agent must inspect a queue of flagged e-commerce orders, cross-reference users, devices, IPs, and historical order data, and decide whether to approve/reject the orders and ban malicious actors.
+
+## Why This Is Useful
+
+E-commerce fraud detection is a multi-billion dollar real-world domain. Manual review teams process thousands of risky orders every day, correlating disparate data sources. This environment simulates:
+- Proxy/VPN IP spoofing
+- Stolen credit card detection
+- Multi-accounting Bot Rings
+
+It tests an agent's ability to plan, correlate cross-entity data, and execute deterministic policy actions safely without False Positives (wrongly banning legitimate travelers).
+
+## Action Space
+
+The environment accepts a typed `FraudAction`:
+
+- `view_order(order_id)`: Load order context.
+- `view_user(user_id)`: Load user context.
+- `approve_order(order_id)`: Marks an order safe.
+- `reject_order(order_id, reason)`: Marks an order fraudulent along with a specific required reason keywords.
+- `ban_user(user_id)`: Bans the user account permanently.
+- `finalize()`
+- `noop()`
+
+## Observation Space
+
+Each `FraudObservation` includes:
+
+- `task`: Card with objective, difficulty, and max steps
+- `queue`: Summary of pending orders
+- `current_order`: Fully hydrated order detail (only populated after `view_order`)
+- `current_user`: Fully hydrated user detail (only populated after `view_user`)
+- `knowledge_base`: Precise rule snippets defining the investigation strict criteria.
+
+## Tasks & Reward Design
+
+### 1. Easy: Obvious Proxy Fraud
+A single high-value order with a mismatched IP (VPN) and billing address. The agent must reject the order (citing `proxy` or `ip`) and ban the user.
+
+### 2. Medium: Distinguish Good vs Bad
+Two orders in the queue. The agent must realize one is a legitimate traveling user (mismatched IP but old trusted account history) and approve it, while rejecting and banning the other user using a stolen card on a brand-new account.
+
+### 3. Hard: Dismantle a Bot Ring
+Three identical low-value orders from brand new accounts using the exact same Device ID but different IPs. The agent must correlate the `device_id`, reject all three citing `bot` or `device match`, and ban all three users.
+
+Rewards are strictly deterministic partial-progress signals (0.0 to 1.0). Approving incorrectly scores 0.0, rejecting correctly scores 0.6, banning properly adds the final 0.4.
+
+## Setup
+
+```bash
+uv sync
+openenv validate
+uv run server
+```
+
+Then open:
+- `http://localhost:7860/web`
+- `http://localhost:7860/docs`
+
+## Docker
+
+```bash
+docker build -t ecommerce-fraud-env .
+docker run -p 7860:7860 ecommerce-fraud-env
+```
+
+## Baseline Inference
+
+Required environment variables:
+- `API_BASE_URL`
+- `MODEL_NAME`
+- `HF_TOKEN`
+
+Run the baseline:
+```bash
+python inference.py
+```
+The baseline defaults to an agentic LLM utilizing the `OpenAI` client in a robust loop, and gracefully falls back to a deterministic 1.0 scoring policy if no API key is provided.
